@@ -11,6 +11,8 @@ from googleapiclient.errors import HttpError
 SCOPES = ['https://www.googleapis.com/auth/admin.directory.group']
 EMAIL_DOMAIN = 'recube.it'
 GROUP_SUFFIX = 'tag'
+INPUT_FILE='User_List.csv'
+OUTPUT_FILE='Output.csv'
 
 def initialize_credentials():
     credentials = None
@@ -31,7 +33,7 @@ def initialize_credentials():
     return credentials
 
 def get_users_from_csv():
-    csv_file_path = 'User_List.csv'
+    csv_file_path = INPUT_FILE
     user_list = []
 
     # Open the CSV file
@@ -48,6 +50,19 @@ def get_users_from_csv():
 
         return user_list
 
+def put_users_in_csv(user_list):
+    csv_file_path = OUTPUT_FILE
+    # Open the CSV file in write mode
+    with open(csv_file_path, mode='w', newline='', encoding='utf-8') as file:
+        csv_writer = csv.writer(file, delimiter=';')
+
+        # Write the header
+        csv_writer.writerow(['Group', 'Email'])
+
+        # Write each user's data
+        for user in user_list:
+            csv_writer.writerow(user)
+
 def create_gmail_group(email, name, description):
   try:
     # Call the Gmail API
@@ -55,9 +70,9 @@ def create_gmail_group(email, name, description):
     service = build('admin', 'directory_v1', credentials=creds)
 
     group_info = {
-        'email': group_email,
-        'name': group_name,
-        'description': group_description
+        'email': email,
+        'name': name,
+        'description': description
     }
 
     group = service.groups().insert(body=group_info).execute()
@@ -66,9 +81,9 @@ def create_gmail_group(email, name, description):
     # TODO(developer) - Handle errors from gmail API.
     print(f"An error occurred: {error}")
 
-def add_user_to_gmail_group(email, group_email):
+def add_user_to_gmail_group(member_email, group_email):
     member_info = {
-        'email': email,
+        'email': member_email,
         'role': 'MEMBER' 
     }
     creds = initialize_credentials()
@@ -76,23 +91,27 @@ def add_user_to_gmail_group(email, group_email):
     try:
         service.members().insert(groupKey=group_email, body=member_info).execute()
     except Exception as e:
-        return e
-    
+        return e    
 
 if __name__ == "__main__":
-    users = get_users_from_csv()
-    proceed = input('I got ' + str(len(users)) + ' users, do you want to proceed with group creation ? (Y/N): ').strip().upper()
+    input_users = get_users_from_csv()
+    output_users = []
+    proceed = input('I got ' + str(len(input_users)) + ' users, do you want to proceed with group creation ? (Y/N): ').strip().upper()
     if proceed == "Y":
-        for user in users:
+        for user in input_users:
             if user[0].startswith('ᐧ'):
                 break  # Stop reading further
             group_email = user[0] + '.' + user[1] + '.' + GROUP_SUFFIX + '@' + EMAIL_DOMAIN
             group_name = "Skill Builder User" + " " + user[0].capitalize() + " " + user[1].capitalize()
-            group_description = "Skill Builder User for TAG Devop & Cloud Master - PO-2024-ITA-00120"
+            group_description = "Skill Builder User for TAG Devop & Cloud Master - PO-2025-IT-MED-00092"
             print("I'm creating the group " + group_name)
             create_gmail_group(group_email, group_name, group_description)
             print("I'm adding the email " + user[2] + " in the group " + group_name)
             add_user_to_gmail_group(user[2],group_email)
+            output_users.append([group_email,user[2]])
+        print("I'm creating the csv file with output")
+        put_users_in_csv(output_users)
+
     elif proceed == "N":
         print("Group creation cancelled!")
     else:
