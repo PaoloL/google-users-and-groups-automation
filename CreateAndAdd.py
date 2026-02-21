@@ -10,9 +10,9 @@ from googleapiclient.errors import HttpError
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/admin.directory.group']
 EMAIL_DOMAIN = 'recube.it'
-GROUP_SUFFIX = 'tag'
-INPUT_FILE='User_List.csv'
-OUTPUT_FILE='Output.csv'
+GROUP_SUFFIX = 'academy'
+INPUT_FILE='input.csv'
+OUTPUT_FILE='output.csv'
 
 def initialize_credentials():
     credentials = None
@@ -21,8 +21,12 @@ def initialize_credentials():
     # If there are no (valid) credentials available, let the user log in.
     if not credentials or not credentials.valid:
         if credentials and credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
-        else:
+            try:
+                credentials.refresh(Request())
+            except Exception:
+                os.remove("token.json")
+                credentials = None
+        if not credentials:
             flow = InstalledAppFlow.from_client_secrets_file(
                 "credentials.json", SCOPES
             )
